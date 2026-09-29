@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e40af">
+<title>物品記錄</title>
+<style>
+  :root {
+    --bg: #f4f7fb; --card: #ffffff; --line: #e2e8f0; --text: #1e293b;
+    --muted: #64748b; --primary: #2563eb; --primary-soft: #dbeafe;
+    --green: #16a34a; --green-soft: #dcfce7; --red: #dc2626;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5;
+  }
+  header {
+    background: linear-gradient(120deg, #1e40af, #2563eb); color: #fff;
+    padding: calc(18px + env(safe-area-inset-top)) 20px 18px; box-shadow: var(--shadow);
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: 13px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; padding-bottom: 40px; }
+  .stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 16px; }
+  @media(min-width:640px){ .stats{ grid-template-columns: repeat(4,1fr);} }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .stat .label { color: var(--muted); font-size: 12px; }
+  .stat .value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card-head { padding: 13px 16px; border-bottom: 1px solid var(--line); font-weight: 600; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;}
+  .card-body { padding: 16px; }
+  form.grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media(min-width:640px){ form.grid{ grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); align-items:end;} }
+  label { display:block; font-size:12px; color: var(--muted); margin-bottom:4px; font-weight:500;}
+  input, select { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:9px; font-size:16px; background:#fff; color:var(--text);}
+  input:focus, select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-soft);}
+  button { cursor:pointer; border:none; border-radius:9px; padding:11px 16px; font-size:15px; font-weight:600; transition:.15s; }
+  .btn-primary { background:var(--primary); color:#fff; }
+  .btn-primary:active { background:#1d4ed8; }
+  .btn-ghost { background:#fff; color:var(--text); border:1px solid var(--line); }
+  .btn-ghost:active { background:#f1f5f9; }
+  .btn-danger { background:#fff; color:var(--red); border:1px solid #fecaca; }
+  .btn-danger:active { background:#fef2f2; }
+  .btn-sm { padding:7px 12px; font-size:13px; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; }
+  .toolbar input { flex:1 1 140px; }
+  .toolbar select { flex:1 1 120px; }
+  .toolbar .grow { flex-basis:100%; }
+  /* photo picker */
+  .photo-pick { display:flex; align-items:center; gap:12px; }
+  .thumb-slot { width:64px; height:64px; border-radius:10px; border:1px dashed var(--line); background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden; flex:0 0 auto; color:var(--muted); font-size:11px; text-align:center;}
+  .thumb-slot img { width:100%; height:100%; object-fit:cover; }
+  /* item grid */
+  .items { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media(min-width:560px){ .items{ grid-template-columns:repeat(2,1fr);} }
+  @media(min-width:900px){ .items{ grid-template-columns:repeat(3,1fr);} }
+  .item { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+  .item-photo { aspect-ratio:16/10; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:32px; cursor:pointer; overflow:hidden;}
+  .item-photo img { width:100%; height:100%; object-fit:cover; }
+  .item-body { padding:12px 14px; display:flex; flex-direction:column; gap:8px; flex:1; }
+  .item-title { font-weight:700; font-size:16px; display:flex; justify-content:space-between; gap:8px; align-items:flex-start;}
+  .item-meta { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); }
+  .item-meta b { color:var(--text); font-weight:600; }
+  .item-actions { display:flex; gap:8px; margin-top:auto; }
+  .item-actions button { flex:1; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; background:var(--primary-soft); color:var(--primary);}
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap;}
+  .badge-using { background:var(--green-soft); color:var(--green); }
+  .badge-done { background:#f1f5f9; color:var(--muted); }
+  .empty { text-align:center; color:var(--muted); padding:40px 20px; }
+  /* dialog */
+  dialog { border:none; border-radius:14px; padding:0; box-shadow:0 20px 50px rgba(0,0,0,.25); max-width:520px; width:94%; }
+  dialog::backdrop { background:rgba(15,23,42,.5); }
+  .dlg-head { padding:16px 18px; border-bottom:1px solid var(--line); font-weight:700; }
+  .dlg-body { padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .dlg-body .full { grid-column:1/-1; }
+  .dlg-foot { padding:14px 18px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+  .hint { font-size:12px; color:var(--muted); font-weight:400; }
+  /* lightbox */
+  #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.9); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;}
+  #lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+  .link-btn { background:none; border:none; color:var(--red); font-size:13px; padding:4px; cursor:pointer; text-decoration:underline;}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 物品記錄</h1>
+  <p>記錄你擁有的東西：何時開始用、花了多少、何時用完</p>
+</header>
+
+<div class="wrap">
+  <div class="stats" id="stats"></div>
+
+  <!-- 新增 -->
+  <div class="card">
+    <div class="card-head">新增物品</div>
+    <div class="card-body">
+      <form class="grid" id="addForm">
+        <div><label>名稱 *</label><input id="f_name" required placeholder="例如：牙膏、跑鞋"></div>
+        <div><label>分類</label><input id="f_cat" list="catList" placeholder="例如：日用品"><datalist id="catList"></datalist></div>
+        <div><label>金額</label><input id="f_price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+        <div><label>開始使用日期</label><input id="f_start" type="date"></div>
+        <div><label>用完日期（留空＝使用中）</label><input id="f_end" type="date"></div>
+        <div>
+          <label>照片</label>
+          <div class="photo-pick">
+            <div class="thumb-slot" id="f_thumb">無</div>
+            <input type="file" id="f_photo" accept="image/*" capture="environment" style="display:none">
+            <button type="button" class="btn-ghost btn-sm" id="f_photoBtn">📷 選照片</button>
+            <button type="button" class="btn-ghost btn-sm" id="f_photoClear" style="display:none">移除</button>
+          </div>
+        </div>
+        <div><button class="btn-primary" type="submit" style="width:100%">＋ 新增</button></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 清單 -->
+  <div class="card">
+    <div class="card-head">
+      <span>物品清單 <span class="hint" id="count"></span></span>
+      <div class="toolbar">
+        <input id="search" placeholder="搜尋名稱…">
+        <select id="filterCat"><option value="">全部分類</option></select>
+        <select id="filterStatus">
+          <option value="">全部狀態</option>
+          <option value="using">使用中</option>
+          <option value="done">已用完</option>
+        </select>
+        <select id="sortSel">
+          <option value="start:-1">最新開始</option>
+          <option value="start:1">最早開始</option>
+          <option value="name:1">名稱 A→Z</option>
+          <option value="price:-1">金額高→低</option>
+          <option value="price:1">金額低→高</option>
+          <option value="days:-1">使用天數多→少</option>
+        </select>
+        <div class="grow" style="display:flex; gap:8px;">
+          <button class="btn-ghost btn-sm" id="btnExport" style="flex:1">匯出 CSV</button>
+          <button class="btn-ghost btn-sm" id="btnImport" style="flex:1">匯入 CSV</button>
+          <input type="file" id="fileInput" accept=".csv" style="display:none">
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="items" id="items"></div>
+      <div class="empty" id="emptyMsg" style="display:none">還沒有任何物品，從上方新增吧。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 編輯對話框 -->
+<dialog id="editDlg">
+  <div class="dlg-head">編輯物品</div>
+  <div class="dlg-body">
+    <div class="full"><label>名稱 *</label><input id="e_name" required></div>
+    <div><label>分類</label><input id="e_cat" list="catList"></div>
+    <div><label>金額</label><input id="e_price" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    <div><label>開始使用日期</label><input id="e_start" type="date"></div>
+    <div><label>用完日期（留空＝使用中）</label><input id="e_end" type="date"></div>
+    <div class="full">
+      <label>照片</label>
+      <div class="photo-pick">
+        <div class="thumb-slot" id="e_thumb">無</div>
+        <input type="file" id="e_photo" accept="image/*" capture="environment" style="display:none">
+        <button type="button" class="btn-ghost btn-sm" id="e_photoBtn">📷 選照片</button>
+        <button type="button" class="btn-ghost btn-sm" id="e_photoClear" style="display:none">移除</button>
+      </div>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button type="button" class="btn-ghost" id="e_cancel">取消</button>
+    <button type="button" class="btn-primary" id="e_save">儲存</button>
+  </div>
+</dialog>
+
+<div id="lightbox"><img id="lightboxImg" alt=""></div>
+
+<script>
+const KEY = "item-tracker-v1";
+let items = load();
+let editingId = null, sortBy = "start", sortDir = -1;
+let pendingPhoto = null;    // 新增用：dataURL 或 null
+let editPhoto = undefined;  // 編輯用：undefined=不變, null=移除, dataURL=新照片
+
+/* ---------- 儲存 ---------- */
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(items)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+/* ---------- IndexedDB（照片） ---------- */
+let dbP = new Promise((res,rej)=>{
+  const r = indexedDB.open("item-tracker-photos", 1);
+  r.onupgradeneeded = ()=> r.result.createObjectStore("photos");
+  r.onsuccess = ()=> res(r.result);
+  r.onerror = ()=> rej(r.error);
+});
+async function photoGet(id){ const db=await dbP; return new Promise(res=>{ const rq=db.transaction("photos").objectStore("photos").get(id); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }
+async function photoPut(id,data){ const db=await dbP; return new Promise(res=>{ const rq=db.transaction("photos","readwrite").objectStore("photos").put(data,id); rq.onsuccess=()=>res(); rq.onerror=()=>res(); }); }
+async function photoDel(id){ const db=await dbP; return new Promise(res=>{ const rq=db.transaction("photos","readwrite").objectStore("photos").delete(id); rq.onsuccess=()=>res(); rq.onerror=()=>res(); }); }
+
+/* 壓縮圖片為 dataURL（最長邊 1000px, JPEG） */
+function compress(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const max=1000, s=Math.min(1, max/Math.max(img.width,img.height));
+      const c=document.createElement("canvas");
+      c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL("image/jpeg",0.8));
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("圖片讀取失敗")); };
+    img.src=url;
+  });
+}
+
+/* ---------- 計算 ---------- */
+function daysBetween(a,b){ if(!a) return null; const s=new Date(a), e=b?new Date(b):new Date(); return Math.max(0, Math.round((e-s)/86400000)); }
+function fmtMoney(n){ return (n||n===0) ? "$"+Number(n).toLocaleString("zh-Hant",{maximumFractionDigits:2}) : "—"; }
+function decorate(it){ const days=daysBetween(it.start,it.end); return {...it, days, perDay:(it.price&&days)?it.price/days:null, using:!it.end}; }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------- 渲染 ---------- */
+async function render(){
+  const cats=[...new Set(items.map(i=>i.category).filter(Boolean))].sort();
+  document.getElementById("catList").innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join("");
+  const fc=document.getElementById("filterCat"), cur=fc.value;
+  fc.innerHTML='<option value="">全部分類</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join("");
+  fc.value=cur;
+
+  const q=document.getElementById("search").value.trim().toLowerCase();
+  const fcat=fc.value, fstat=document.getElementById("filterStatus").value;
+  let rows=items.map(decorate).filter(i=>{
+    if(q && !i.name.toLowerCase().includes(q)) return false;
+    if(fcat && i.category!==fcat) return false;
+    if(fstat==="using" && !i.using) return false;
+    if(fstat==="done" && i.using) return false;
+    return true;
+  });
+  rows.sort((a,b)=>{ let x=a[sortBy],y=b[sortBy]; if(x==null)return 1; if(y==null)return -1; return typeof x==="string"? x.localeCompare(y,"zh-Hant")*sortDir : (x-y)*sortDir; });
+
+  const all=items.map(decorate);
+  const total=all.reduce((s,i)=>s+(Number(i.price)||0),0);
+  const using=all.filter(i=>i.using).length;
+  const usingCost=all.filter(i=>i.using).reduce((s,i)=>s+(Number(i.price)||0),0);
+  document.getElementById("stats").innerHTML=`
+    <div class="stat"><div class="label">物品總數</div><div class="value">${all.length}</div></div>
+    <div class="stat"><div class="label">使用中</div><div class="value" style="color:var(--green)">${using}</div></div>
+    <div class="stat"><div class="label">累積花費</div><div class="value">${fmtMoney(total)}</div></div>
+    <div class="stat"><div class="label">使用中資產值</div><div class="value">${fmtMoney(usingCost)}</div></div>`;
+
+  document.getElementById("count").textContent=`（${rows.length} 筆）`;
+  const box=document.getElementById("items");
+  box.innerHTML=rows.map(i=>`
+    <div class="item">
+      <div class="item-photo" data-photo="${i.id}">📦</div>
+      <div class="item-body">
+        <div class="item-title"><span>${esc(i.name)}</span>${i.using?'<span class="badge badge-using">使用中</span>':'<span class="badge badge-done">已用完</span>'}</div>
+        <div class="item-meta">
+          ${i.category?`<span><span class="tag">${esc(i.category)}</span></span>`:""}
+          <span>金額 <b>${fmtMoney(i.price)}</b></span>
+          <span>開始 <b>${i.start||"—"}</b></span>
+          ${i.end?`<span>用完 <b>${i.end}</b></span>`:""}
+          <span>${i.using?"已用":"共用"} <b>${i.days!=null?i.days+" 天":"—"}</b></span>
+          ${i.perDay!=null?`<span>每日 <b>${fmtMoney(i.perDay.toFixed(2))}</b></span>`:""}
+        </div>
+        <div class="item-actions">
+          <button class="btn-ghost btn-sm" onclick="editItem('${i.id}')">編輯</button>
+          <button class="btn-danger btn-sm" onclick="delItem('${i.id}')">刪除</button>
+        </div>
+      </div>
+    </div>`).join("");
+  document.getElementById("emptyMsg").style.display=items.length===0?"block":"none";
+
+  // 載入照片縮圖
+  box.querySelectorAll(".item-photo").forEach(async el=>{
+    const data=await photoGet(el.dataset.photo);
+    if(data){ el.innerHTML=`<img src="${data}" alt="">`; el.onclick=()=>openLightbox(data); }
+  });
+}
+
+/* ---------- 照片選取 UI ---------- */
+function wirePhotoPicker(btnId, inputId, clearId, thumbId, onPick){
+  const input=document.getElementById(inputId), thumb=document.getElementById(thumbId), clr=document.getElementById(clearId);
+  document.getElementById(btnId).onclick=()=>input.click();
+  input.onchange=async()=>{
+    if(!input.files[0]) return;
+    try{ const data=await compress(input.files[0]); onPick(data); thumb.innerHTML=`<img src="${data}">`; clr.style.display=""; }
+    catch(e){ alert(e.message); }
+    input.value="";
+  };
+  clr.onclick=()=>{ onPick(null); thumb.innerHTML="無"; clr.style.display="none"; };
+}
+wirePhotoPicker("f_photoBtn","f_photo","f_photoClear","f_thumb", d=>pendingPhoto=d);
+wirePhotoPicker("e_photoBtn","e_photo","e_photoClear","e_thumb", d=>editPhoto=d);
+
+/* ---------- 新增 ---------- */
+document.getElementById("addForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const id=uid();
+  items.push({ id, name:f_name.value.trim(), category:f_cat.value.trim(),
+    price:f_price.value?Number(f_price.value):null, start:f_start.value||"", end:f_end.value||"" });
+  if(pendingPhoto) await photoPut(id, pendingPhoto);
+  save(); await render();
+  e.target.reset();
+  f_start.value=new Date().toISOString().slice(0,10);
+  pendingPhoto=null; document.getElementById("f_thumb").innerHTML="無"; document.getElementById("f_photoClear").style.display="none";
+});
+
+/* ---------- 編輯 ---------- */
+window.editItem=async id=>{
+  const it=items.find(i=>i.id===id); if(!it) return;
+  editingId=id; editPhoto=undefined;
+  e_name.value=it.name; e_cat.value=it.category||""; e_price.value=it.price??"";
+  e_start.value=it.start||""; e_end.value=it.end||"";
+  const data=await photoGet(id);
+  const thumb=document.getElementById("e_thumb"), clr=document.getElementById("e_photoClear");
+  if(data){ thumb.innerHTML=`<img src="${data}">`; clr.style.display=""; } else { thumb.innerHTML="無"; clr.style.display="none"; }
+  editDlg.showModal();
+};
+document.getElementById("e_save").addEventListener("click", async()=>{
+  const it=items.find(i=>i.id===editingId); if(!it) return;
+  if(!e_name.value.trim()){ e_name.focus(); return; }
+  it.name=e_name.value.trim(); it.category=e_cat.value.trim();
+  it.price=e_price.value?Number(e_price.value):null; it.start=e_start.value||""; it.end=e_end.value||"";
+  if(editPhoto===null) await photoDel(editingId);
+  else if(typeof editPhoto==="string") await photoPut(editingId, editPhoto);
+  save(); await render(); editDlg.close();
+});
+document.getElementById("e_cancel").addEventListener("click", ()=>editDlg.close());
+
+window.delItem=async id=>{
+  const it=items.find(i=>i.id===id);
+  if(confirm(`確定要刪除「${it?.name||""}」嗎？`)){ items=items.filter(i=>i.id!==id); await photoDel(id); save(); await render(); }
+};
+
+/* ---------- 搜尋 / 篩選 / 排序 ---------- */
+["search","filterCat","filterStatus"].forEach(id=>document.getElementById(id).addEventListener("input", render));
+document.getElementById("sortSel").addEventListener("change", e=>{ const [k,d]=e.target.value.split(":"); sortBy=k; sortDir=Number(d); render(); });
+
+/* ---------- 燈箱 ---------- */
+function openLightbox(src){ lightboxImg.src=src; lightbox.style.display="flex"; }
+document.getElementById("lightbox").addEventListener("click", ()=>lightbox.style.display="none");
+
+/* ---------- CSV（照片不含在內） ---------- */
+function csvCell(v){ v=String(v??""); return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+document.getElementById("btnExport").addEventListener("click", ()=>{
+  const head=["名稱","分類","金額","開始使用","用完日期"];
+  const lines=[head.join(",")].concat(items.map(i=>[i.name,i.category||"",i.price??"",i.start||"",i.end||""].map(csvCell).join(",")));
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`物品記錄_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById("btnImport").addEventListener("click", ()=>fileInput.click());
+document.getElementById("fileInput").addEventListener("change", e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const rows=parseCSV(r.result.replace(/^﻿/,""));
+      if(rows.length<2){ alert("CSV 沒有資料列。"); return; }
+      const added=rows.slice(1).filter(c=>c[0]&&c[0].trim()).map(c=>({
+        id:uid(), name:(c[0]||"").trim(), category:(c[1]||"").trim(),
+        price:c[2]?Number(c[2]):null, start:(c[3]||"").trim(), end:(c[4]||"").trim() }));
+      if(!added.length){ alert("找不到可匯入的列。"); return; }
+      if(confirm(`匯入 ${added.length} 筆物品？（會加到現有清單）`)){ items=items.concat(added); save(); await render(); }
+    }catch(err){ alert("匯入失敗："+err.message); }
+    fileInput.value="";
+  };
+  r.readAsText(file);
+});
+function parseCSV(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=ch; }
+    else { if(ch==='"') q=true; else if(ch===",") { row.push(cell); cell=""; }
+      else if(ch==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+      else if(ch==="\r"){} else cell+=ch; } }
+  if(cell.length||row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+/* ---------- 起始 ---------- */
+document.getElementById("f_start").value=new Date().toISOString().slice(0,10);
+render();
+</script>
+</body>
+</html>
